@@ -127,7 +127,7 @@ function Control({ code, onExit }) {
     await supabase.from('members').update({ lat: latlng.lat, lng: latlng.lng, location_source: 'manual', location_updated_at: new Date().toISOString() }).eq('id', placing);
     setPlacing(null);
   };
-  const backToGps = (m) => supabase.from('members').update({ location_source: 'gps' }).eq('id', m.id);
+  const backToGps = (m) => supabase.from('members').update({ location_source: 'gps', accuracy_m: null }).eq('id', m.id);
   const allGps = () => Promise.all(members.map((m) => backToGps(m))).then(() => say('Everyone back on live GPS'));
 
   const subject = alert ? byId(all, alert.subject_member_id) : null;
@@ -188,7 +188,7 @@ function Control({ code, onExit }) {
                     </label>
                     <b className="grow">{m.name}{m.id === squad.host_member_id ? ' (host)' : ''}</b>
                     <span className={`tag${lvl === 'over' ? ' red' : ''}`}>{m.has_band ? `${fmtBac(val)} / ${fmtBac(m.bac_limit)}` : 'no band'}</span>
-                    <span className="tag">{m.location_source === 'manual' ? 'placed' : hasLoc(m) ? `GPS ±${Math.round(m.accuracy_m || 0)}m` : 'no location'}</span>
+                    <span className="tag">{m.location_source === 'manual' ? 'placed' : !hasLoc(m) ? 'no location' : m.accuracy_m == null ? 'GPS (waiting)' : `GPS ±${Math.round(m.accuracy_m)}m`}</span>
                     {d != null && <span className="tag cyan">{formatDistance(d)} from {subject.name}</span>}
                   </div>
                   {m.has_band && (

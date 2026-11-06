@@ -36,10 +36,20 @@ export default function LiveMap({
 
   useEffect(() => {
     map.current = L.map(el.current, { zoomControl: false, attributionControl: true }).setView([DEFAULT_CENTER.lat, DEFAULT_CENTER.lng], 16);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 20,
-      attribution: '&copy; OpenStreetMap &copy; CARTO',
-    }).addTo(map.current);
+    // Dark CARTO tiles need a free key (VITE_CARTO_KEY). Without one, use
+    // OpenStreetMap tiles darkened with a CSS filter so the map still works.
+    const cartoKey = import.meta.env.VITE_CARTO_KEY;
+    const tiles = cartoKey
+      ? L.tileLayer(`https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(cartoKey)}`, {
+        maxZoom: 20,
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+      })
+      : L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        className: 'osm-dark',
+        attribution: '&copy; OpenStreetMap contributors',
+      });
+    tiles.addTo(map.current);
     layer.current = L.layerGroup().addTo(map.current);
     map.current.on('click', (e) => clickRef.current && clickRef.current(e.latlng));
     const ro = new ResizeObserver(() => map.current && map.current.invalidateSize());

@@ -5,6 +5,12 @@ import { joinGoing, resolveAlert } from '../lib/actions.js';
 import { requestOrientationPermission } from '../lib/device.js';
 import * as I from '../components/Icons.jsx';
 
+// Shrinks the name so it always fits on one line (Unbounded caps are ~0.95em wide).
+function nameSize(name) {
+  const n = Math.max(3, name.trim().length);
+  return `min(104px, calc((min(100vw, 480px) - 48px) / ${(n * 0.95).toFixed(2)}))`;
+}
+
 export default function AlertTakeover({ members, me, alert, subject, onDismiss }) {
   const [busy, setBusy] = useState(false);
   const others = alert.responder_ids.filter((id) => id !== me.id).map((id) => byId(members, id)).filter(Boolean);
@@ -29,7 +35,7 @@ export default function AlertTakeover({ members, me, alert, subject, onDismiss }
       </div>
       <div className="takeover-body">
         <h1 id="t-title" style={{ margin: 0 }}>
-          <span className="t-name">{subject.name.toUpperCase()}</span>
+          <span className="t-name" style={{ fontSize: nameSize(subject.name) }}>{subject.name.toUpperCase()}</span>
           <span className="t-line">reached their limit</span>
         </h1>
         <span className="t-num">{fmtBac(alert.bac)}</span>

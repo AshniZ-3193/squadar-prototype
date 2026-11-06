@@ -23,6 +23,8 @@ Wristband readings are **simulated** from the facilitator page. Location is **re
    Add environment variables, then Deploy:
    - `VITE_SUPABASE_URL` = Supabase Project URL
    - `VITE_SUPABASE_ANON_KEY` = Supabase anon public key (or publishable key)
+   - optional `VITE_CARTO_KEY` = free CARTO basemaps key (https://carto.com/basemaps/apikey/) for the nicer dark map.
+     Without it the map uses OpenStreetMap tiles with a dark filter.
 3. Open the Vercel URL on your phone. Every push to `main` redeploys automatically.
 
 Local dev: copy `.env.example` to `.env.local`, fill in the two values, `npm install`, `npm run dev`.
@@ -45,6 +47,6 @@ Local dev: copy `.env.example` to `.env.local`, fill in the two values, `npm ins
 - Phones only share location while the site is open on screen. Ask testers to keep it open.
 - Indoor GPS can’t tell rooms apart; use manual placement indoors.
 - iPhone asks separately for Motion & Orientation (needed for the compass arrow). Without it the arrow is north-up.
-- Alarm sound plays only after the person has tapped something in the app (browser rule). Silent mode mutes it.
+- Alarm sound plays only after the person has tapped something in the app (browser rule). On iPhone (iOS 16.4+) it plays even in silent mode; volume must be up. Use **Me → Test sound** to check each phone before the session.
 - Walking steps use the free OpenStreetMap router (routing.openstreetmap.de); if it’s unreachable, the app shows a direction instead.
 - Security is demo-grade: anyone with the link can read squad data. Don’t use for real nights out.

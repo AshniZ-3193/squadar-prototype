@@ -152,6 +152,8 @@ p { margin: 0; line-height: 1.45; }
 @keyframes ring { 0% { transform: scale(.6); opacity: .9; } 100% { transform: scale(1.8); opacity: 0; } }
 .pin-ring { position: absolute; left: -4px; top: -4px; width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--red); animation: ring 1.6s ease-out infinite; pointer-events: none; }
 .leaflet-container { background: #0B0714; font-family: var(--body); }
+/* Turns the light OpenStreetMap tiles into a dark purple night map. */
+.osm-dark { filter: invert(1) hue-rotate(200deg) brightness(0.75) contrast(0.9) saturate(0.45); }
 .leaflet-control-attribution { background: rgba(11,7,20,0.7) !important; color: #8A7DAA !important; font-size: 10px; }
 .leaflet-control-attribution a { color: #A99BC8 !important; }
 
@@ -169,7 +171,7 @@ p { margin: 0; line-height: 1.45; }
 .ticker-track { display: flex; flex: none; white-space: nowrap; font: 800 14px var(--display); letter-spacing: 0.14em; animation: marq 9s linear infinite; }
 .ticker-track span { padding-right: 28px; }
 .takeover-body { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 0 24px; max-width: 480px; width: 100%; margin: 0 auto; }
-.t-name { display: block; font: 900 clamp(64px, 24vw, 104px)/0.9 var(--display); letter-spacing: -2px; animation: slam .55s cubic-bezier(.2,.8,.2,1) .55s both; word-break: break-word; }
+.t-name { display: block; font-family: var(--display); font-weight: 900; line-height: 0.95; letter-spacing: -1px; white-space: nowrap; animation: slam .55s cubic-bezier(.2,.8,.2,1) .55s both; }
 .t-line { display: block; font: 800 28px/1.1 var(--display); animation: slidein .4s ease-out .95s both; }
 .t-num { display: block; margin-top: 12px; font: 900 clamp(84px, 30vw, 120px)/1 var(--display); letter-spacing: -3px; animation: pop .5s ease-out 1.25s both, glow 1.6s ease-in-out 1.8s infinite; }
 .t-sub { display: block; font-size: 18px; font-weight: 600; animation: fadein .4s ease-out 1.6s both; }

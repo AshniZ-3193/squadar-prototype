@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { TopBar, ShareCode } from '../components/Bits.jsx';
 import { meter, fmtBac, num } from '../lib/logic.js';
 import { endNight, leaveSquad } from '../lib/actions.js';
+import { playAlarm, unlockAudio } from '../lib/audio.js';
 
 export default function MeView({ squad, me, isHost, onBack }) {
   const [confirm, setConfirm] = useState(null); // 'end' | 'leave'
@@ -39,6 +40,10 @@ export default function MeView({ squad, me, isHost, onBack }) {
       <ul className="list">
         <li><span className="grow">Wristband</span><span className="soft small">{me.has_band ? 'Connected (simulated)' : 'Not paired'}</span></li>
         <li><span className="grow">Location</span><span className="soft small">{me.location_source === 'manual' ? 'Placed by facilitator' : me.lat != null ? 'Sharing live' : 'Waiting…'}</span></li>
+        <li>
+          <span className="grow">Alert sound</span>
+          <button type="button" className="btn-text" style={{ color: 'var(--cyan)' }} onClick={() => { unlockAudio(); playAlarm(); }}>Test sound</button>
+        </li>
         <li><span className="grow">Sharing ends</span><span className="soft small">6:00 AM or when the night ends</span></li>
       </ul>
 
