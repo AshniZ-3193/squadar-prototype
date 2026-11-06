@@ -50,6 +50,7 @@ export function useLocationReporter(me, enabled) {
   const [status, setStatus] = useState('idle'); // idle | watching | denied | unsupported
   const meId = me?.id;
   const manual = me?.location_source === 'manual';
+  const hasFix = me?.lat != null; // restart watching once a retry gets a first fix
 
   useEffect(() => {
     if (!enabled || !meId) return undefined;
@@ -72,7 +73,7 @@ export function useLocationReporter(me, enabled) {
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
     );
     return () => navigator.geolocation.clearWatch(id);
-  }, [enabled, meId, manual]);
+  }, [enabled, meId, manual, hasFix]);
 
   return status;
 }
