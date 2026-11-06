@@ -3,10 +3,13 @@ import { MeterRow } from '../components/Bits.jsx';
 import { byId, fmtBac, namesList, meter } from '../lib/logic.js';
 import { distanceM, formatDistance, hasLoc } from '../lib/geo.js';
 import { joinGoing } from '../lib/actions.js';
+import { supabase } from '../lib/supabase.js';
+import { getPositionOnce, requestOrientationPermission } from '../lib/device.js';
 import { useState } from 'react';
 
 export default function MapView({ squad, members, me, alert, subject, iAmGoing, onNavigate, onMe, locDenied }) {
   const [busy, setBusy] = useState(false);
+  const [locState, setLocState] = useState(locDenied ? 'denied' : 'idle'); // idle | asking | denied
   const going = alert ? alert.going_ids.map((id) => byId(members, id)).filter(Boolean) : [];
   const goingNames = going.map((m) => (m.id === me.id ? 'You' : m.name));
   const iAmSubject = alert && subject && subject.id === me.id;
@@ -60,9 +63,29 @@ export default function MapView({ squad, members, me, alert, subject, iAmGoing, 
           </div>
         )}
 
-        {located < 1 && (
-          <div className="glass small soft">
-            {locDenied ? 'Location is off on this phone. The facilitator can place you on the map.' : 'Waiting for locations…'}
+        {!hasLoc(me) && me.location_source !== 'manual' && (
+          <div className="glass stack small" style={{ gap: 8 }}>
+            {locState === 'denied' ? (
+              <>
+                <b>Location is blocked on this phone.</b>
+                <span className="soft">iPhone: Settings → Privacy &amp; Security → Location Services → on, and Safari Websites → While Using. Then Settings → Apps → Safari → Location → Ask. Reload this page.</span>
+                <span className="soft">Android: Chrome → ⋮ → Settings → Site settings → Location → allow this site.</span>
+              </>
+            ) : (
+              <span className="soft">{located < 1 ? 'Waiting for locations…' : 'Your location isn’t on the map yet.'}</span>
+            )}
+            <button type="button" className="btn btn-primary" style={{ minHeight: 44, fontSize: 15, boxShadow: 'none' }} disabled={locState === 'asking'}
+              onClick={async () => {
+                requestOrientationPermission();
+                setLocState('asking');
+                const r = await getPositionOnce();
+                if (r.ok) {
+                  await supabase.from('members').update({ lat: r.lat, lng: r.lng, accuracy_m: r.accuracy, location_source: 'gps', location_updated_at: new Date().toISOString() }).eq('id', me.id);
+                  setLocState('idle');
+                } else setLocState('denied');
+              }}>
+              {locState === 'asking' ? 'Asking…' : 'Turn on location'}
+            </button>
           </div>
         )}
       </div>
