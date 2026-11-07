@@ -1,6 +1,6 @@
 import { ShareCode, Avatar } from '../components/Bits.jsx';
 import { startNight } from '../lib/actions.js';
-import { fmtBac } from '../lib/logic.js';
+import { levelFor } from '../lib/logic.js';
 import { useState } from 'react';
 
 export default function Lobby({ squad, members, me, isHost, host }) {
@@ -23,7 +23,7 @@ export default function Lobby({ squad, members, me, isHost, host }) {
             <span className="grow" style={{ fontWeight: 600 }}>
               {m.name}{m.id === squad.host_member_id && <span className="muted" style={{ fontWeight: 500 }}> · host</span>}
             </span>
-            <span className="small soft">{m.has_band ? `band ✓ · ${fmtBac(m.bac_limit)}` : 'no band · location only'}</span>
+            <span className="small soft">{levelFor(m.bac_limit).label}{m.has_band ? ' · device ✓' : ' · no device'}</span>
           </li>
         ))}
       </ul>

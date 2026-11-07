@@ -139,23 +139,24 @@ p { margin: 0; line-height: 1.45; }
 .lvl-over { background: var(--red); }
 
 /* Leaflet pins */
-.pin { display: flex; flex-direction: column; align-items: center; gap: 4px; transform: translate(-50%, -24px); width: max-content; }
+.floor { position: relative; width: 100%; margin: 0 auto; }
+.floor svg { display: block; }
+.pin { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 3px; transform: translate(-50%, -21px); width: max-content; pointer-events: none; }
+.pin.small .pin-av { width: 30px; height: 30px; font-size: 12px; }
+.pin.small .pin-meter { height: 26px; width: 7px; }
+.pin.small { transform: translate(-50%, -15px); }
+.pin-av.selected { outline: 3px solid var(--cyan); outline-offset: 2px; }
 .pin-row { display: flex; align-items: flex-end; gap: 5px; position: relative; }
-.pin-av { width: 42px; height: 42px; border-radius: 50%; background: var(--surface-2); color: var(--text); border: 1.5px solid var(--line-2); display: flex; align-items: center; justify-content: center; font: 700 16px var(--body); }
+.pin-av { width: 38px; height: 38px; border-radius: 50%; background: var(--surface-2); color: var(--text); border: 1.5px solid var(--line-2); display: flex; align-items: center; justify-content: center; font: 700 16px var(--body); }
 .pin-av.me { background: var(--text); color: var(--bg); font-size: 12px; }
 .pin-av.going { border: 3px solid var(--cyan); }
 .pin-av.subject { background: var(--red); color: #fff; border-color: var(--red); box-shadow: 0 0 22px var(--red); }
-.pin-meter { width: 9px; height: 38px; border-radius: 5px; background: #2A2140; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
+.pin-meter { width: 8px; height: 34px; border-radius: 5px; background: #2A2140; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
 .pin-tag { font: 600 12px var(--body); background: rgba(22,15,36,0.94); color: var(--text); border-radius: 8px; padding: 2px 7px; white-space: nowrap; }
 .pin-tag.subject { background: var(--red); color: #fff; font-weight: 700; }
 .pin-tag.going { border: 1px solid var(--cyan); color: var(--cyan-soft); }
 @keyframes ring { 0% { transform: scale(.6); opacity: .9; } 100% { transform: scale(1.8); opacity: 0; } }
-.pin-ring { position: absolute; left: -4px; top: -4px; width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--red); animation: ring 1.6s ease-out infinite; pointer-events: none; }
-.leaflet-container { background: #0B0714; font-family: var(--body); }
-/* Turns the light OpenStreetMap tiles into a dark purple night map. */
-.osm-dark { filter: invert(1) hue-rotate(200deg) brightness(0.75) contrast(0.9) saturate(0.45); }
-.leaflet-control-attribution { background: rgba(11,7,20,0.7) !important; color: #8A7DAA !important; font-size: 10px; }
-.leaflet-control-attribution a { color: #A99BC8 !important; }
+.pin-ring { position: absolute; left: -4px; top: -4px; width: 46px; height: 46px; border-radius: 50%; border: 2px solid var(--red); animation: ring 1.6s ease-out infinite; pointer-events: none; }
 
 /* Alert takeover */
 @keyframes flash { 0% { background: #0B0714; } 12% { background: #E11D35; } 26% { background: #0B0714; } 42% { background: #E11D35; } 100% { background: #E11D35; } }
@@ -211,9 +212,34 @@ table.data th, table.data td { border-bottom: 1px solid var(--line); padding: 8p
 table.data th { position: sticky; top: 0; background: var(--surface); color: var(--muted); font-weight: 700; }
 .fac-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 @media (min-width: 900px) { .fac-grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); } }
-.fac-map { height: 360px; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); }
+.fac-map { max-width: 380px; }
 input[type=range] { width: 100%; accent-color: var(--cyan); }
 .tag { font-size: 12px; font-weight: 700; border-radius: 8px; padding: 2px 8px; border: 1px solid var(--line-2); color: var(--soft); }
 .tag.red { border-color: var(--red); color: var(--red-soft); }
 .tag.cyan { border-color: var(--cyan); color: var(--cyan-soft); }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 3000; background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 14px; padding: 10px 16px; font-weight: 600; }
+
+/* Drinking-plan scale */
+.level { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 14px; border-radius: 16px; border: 1px solid var(--line-2); background: transparent; color: var(--text); font-size: 16px; text-align: left; cursor: pointer; width: 100%; }
+.level.on { border: 2px solid var(--cyan); background: rgba(61,224,255,0.1); }
+.level-bar { display: flex; gap: 3px; align-items: flex-end; }
+.level-bar span { width: 5px; height: 16px; border-radius: 2px; background: var(--surface-2); }
+.level-bar span.fill { background: var(--neutral); }
+.level.on .level-bar span.fill { background: var(--cyan); }
+.select { height: 40px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--surface); color: var(--text); font: 600 14px var(--body); padding: 0 10px; }
+
+/* Aftermath */
+.seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); }
+.seg button { min-height: 44px; border-radius: 12px; border: none; background: transparent; color: var(--muted); font-weight: 700; font-size: 15px; cursor: pointer; }
+.seg button.on { background: var(--cyan); color: var(--cyan-ink); }
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.stat .h-display { overflow-wrap: anywhere; }
+.badge { align-self: flex-start; font-weight: 700; font-size: 14px; border-radius: 999px; padding: 6px 12px; }
+.badge.over { background: #1E0910; border: 1.5px solid var(--red); color: var(--red-soft); }
+.badge.ok { background: var(--surface-2); border: 1px solid var(--line-2); color: var(--soft); }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.cal-head { text-align: center; font-size: 12px; color: var(--muted); font-weight: 700; }
+.cal-cell { height: 38px; display: flex; align-items: center; justify-content: center; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.dot.ring { background: var(--neutral); outline: 2px solid var(--text); outline-offset: 2px; width: 8px; height: 8px; }

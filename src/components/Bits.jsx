@@ -20,7 +20,7 @@ export function MeterRow({ members, meId }) {
               {m.id === meId ? 'You' : m.name}
             </span>
             <span style={{ fontSize: 12, marginTop: -4, color: level === 'over' ? 'var(--red-soft)' : 'var(--muted)', fontWeight: level === 'over' ? 700 : 500 }}>
-              {m.has_band ? fmtBac(m.bac) : 'no band'}
+              {m.has_band ? fmtBac(m.bac) : 'no device'}
             </span>
           </div>
         );

@@ -1,4 +1,4 @@
-import { distanceM, hasLoc } from './geo.js';
+import { walkFeet, hasPos } from './floor.js';
 
 export const num = (v) => (v == null ? 0 : Number(v));
 export const fmtBac = (v) => num(v).toFixed(2).replace(/^0/, '0');
@@ -31,7 +31,7 @@ export function rankHelpers(members, subject, exclude = []) {
   return activeMembers(members)
     .filter((m) => m.id !== subject.id && !exclude.includes(m.id))
     .filter((m) => !(m.has_band && meter(m).level === 'over'))
-    .map((m, i) => ({ m, d: hasLoc(m) && hasLoc(subject) ? distanceM(m, subject) : 1e9 + i }))
+    .map((m, i) => ({ m, d: hasPos(m) && hasPos(subject) ? walkFeet(m, subject) : 1e9 + i }))
     .sort((a, b) => a.d - b.d)
     .map((x) => x.m);
 }
@@ -52,3 +52,18 @@ export function newCode() {
 }
 
 export const initial = (name) => (name || '?').trim().charAt(0).toUpperCase();
+
+// "How much are you planning to drink tonight?" Each choice sets a simulated BAC limit.
+export const LEVELS = [
+  { key: 'none', label: 'Not drinking', hint: '0 drinks', limit: 0.02 },
+  { key: 'tipsy', label: 'Tipsy', hint: 'about 1–2 drinks', limit: 0.04 },
+  { key: 'buzzed', label: 'Buzzed', hint: 'about 3–4 drinks', limit: 0.06 },
+  { key: 'drunk', label: 'Drunk', hint: 'about 5–6 drinks', limit: 0.08 },
+  { key: 'wasted', label: 'Wasted', hint: '7+ drinks', limit: 0.12 },
+];
+export function levelFor(limit) {
+  const l = num(limit);
+  return LEVELS.reduce((best, x) => (Math.abs(x.limit - l) < Math.abs(best.limit - l) ? x : best), LEVELS[0]);
+}
+// Rough drinks estimate from a peak BAC (about 0.018 per standard drink).
+export const drinksFrom = (bac) => Math.max(0, Math.round(num(bac) / 0.018));

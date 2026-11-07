@@ -3,11 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { TopBar } from '../components/Bits.jsx';
 import * as I from '../components/Icons.jsx';
 import { createSquad, findSquad, addMember } from '../lib/actions.js';
-import { getPositionOnce, requestOrientationPermission } from '../lib/device.js';
-import { setMemberId, setLocationConsent, getMemberId } from '../lib/storage.js';
+import { setMemberId, getMemberId } from '../lib/storage.js';
 import { unlockAudio } from '../lib/audio.js';
-
-const LIMITS = ['0.04', '0.06', '0.08', 'Custom'];
+import { LEVELS } from '../lib/logic.js';
 
 export default function Onboard({ mode }) {
   const isCreate = mode === 'create';
@@ -20,8 +18,7 @@ export default function Onboard({ mode }) {
   const [code, setCode] = useState(linkCode);
   const [squad, setSquad] = useState(null);
   const [name, setName] = useState('');
-  const [limitChoice, setLimitChoice] = useState(null);
-  const [custom, setCustom] = useState('0.07');
+  const [level, setLevel] = useState(null);
   const [pairing, setPairing] = useState('idle'); // idle | searching | paired | skipped
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -40,8 +37,7 @@ export default function Onboard({ mode }) {
     }).catch(() => { setStep(1); });
   }, [isCreate, linkCode, nav]);
 
-  const limit = limitChoice === 'Custom' ? Number(custom) || 0.08 : Number(limitChoice || '0.08');
-  const pct = Math.min(step - 1, 5) * 20;
+  const pct = Math.min(step - 1, 4) * 25;
 
   const checkCode = async () => {
     setErr(''); setBusy(true);
@@ -55,35 +51,30 @@ export default function Onboard({ mode }) {
     setBusy(false);
   };
 
-  const pickLimit = (v) => {
-    setLimitChoice(v);
-    if (v !== 'Custom') later(() => setStep(4), 450);
-  };
+  const pickLevel = (l) => { setLevel(l); later(() => setStep(4), 450); };
 
   const pair = () => {
     if (pairing !== 'idle') return;
     setPairing('searching');
-    later(() => { setPairing('paired'); later(() => setStep(5), 900); }, 2500);
+    later(() => setPairing('paired'), 2500);
   };
 
   const finish = async () => {
     unlockAudio();
-    const orient = requestOrientationPermission(); // must start inside the tap (iPhone)
     setErr(''); setBusy(true);
-    const [loc] = await Promise.all([getPositionOnce(), orient]);
     try {
       const hasBand = pairing !== 'skipped';
+      const limit = level?.limit ?? 0.08;
       let s = squad; let member;
       if (isCreate) {
-        const r = await createSquad({ squadName, name, limit, hasBand, loc });
+        const r = await createSquad({ squadName, name, limit, hasBand });
         s = r.squad; member = r.member;
       } else {
-        member = await addMember(squad.id, { name, limit, hasBand, loc });
+        member = await addMember(squad.id, { name, limit, hasBand });
       }
       setMemberId(s.code, member.id);
-      setLocationConsent(s.code);
-      nav(`/s/${s.code}`, { replace: true, state: { locDenied: !loc.ok && loc.reason === 'denied' } });
-    } catch (e) {
+      nav(`/s/${s.code}`, { replace: true });
+    } catch {
       setErr('Something went wrong saving that. Try again.');
       setBusy(false);
     }
@@ -109,22 +100,17 @@ export default function Onboard({ mode }) {
           ? <Done n={1}><b>{squadName}</b></Done>
           : <Done n={1}>Squad <b>{squad?.code}</b> · {squad?.name}</Done>)}
         {step > 2 && <Done n={2}>You’re <b>{name || 'friend'}</b>{isCreate ? ' · host' : ''}</Done>}
-        {step > 3 && <Done n={3}>Limit tonight <b>{limit.toFixed(2)}</b></Done>}
-        {step > 4 && (
-          <div className="done-row" style={{ cursor: 'default' }}>
-            <span className="tick">✓</span><span>{pairing === 'skipped' ? 'No band · sharing location only' : 'Wristband paired'}</span>
-          </div>
-        )}
+        {step > 3 && <Done n={3}>Tonight: <b>{level?.label}</b> <span className="muted">· {level?.hint}</span></Done>}
       </div>
 
       {step === 1 && (
         <section className="card stack reveal" key="s1">
-          <span className="eyebrow">Step 1 of 5</span>
+          <span className="eyebrow">Step 1 of 4</span>
           {isCreate ? (
             <>
               <label className="h-display h2" htmlFor="squad">Name tonight’s squad</label>
               <input id="squad" className="input" value={squadName} onChange={(e) => setSquadName(e.target.value)} maxLength={40} />
-              <p className="muted small">The squad only lasts tonight. It ends at 6:00 AM.</p>
+              <p className="muted small">The squad only lasts tonight.</p>
               <button type="button" className="btn btn-primary" disabled={!squadName.trim()} onClick={() => setStep(2)}>Next</button>
             </>
           ) : (
@@ -144,73 +130,67 @@ export default function Onboard({ mode }) {
 
       {step === 2 && (
         <section className="card stack reveal" key="s2">
-          <span className="eyebrow">Step 2 of 5</span>
-          <label className="h-display h2" htmlFor="name">What should your squad call you?</label>
-          <input id="name" className="input" placeholder="Your first name" value={name} autoFocus maxLength={24}
+          <span className="eyebrow">Step 2 of 4</span>
+          <label className="h-display h2" htmlFor="name">Your name</label>
+          <input id="name" className="input" placeholder="First name" value={name} autoFocus maxLength={24} autoComplete="given-name"
             onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && name.trim() && setStep(3)} />
+          <p className="muted small">This is how you’ll show up to your squad.</p>
           <button type="button" className="btn btn-primary" disabled={!name.trim()} onClick={() => setStep(3)}>Next</button>
         </section>
       )}
 
       {step === 3 && (
         <section className="card stack reveal" key="s3">
-          <span className="eyebrow">Step 3 of 5</span>
-          <h2 className="h-display h2">Your limit tonight</h2>
-          <div className="choice-grid" role="radiogroup" aria-label="Your limit">
-            {LIMITS.map((v) => (
-              <button type="button" key={v} role="radio" aria-checked={limitChoice === v}
-                className={`choice${limitChoice === v ? ' on' : ''}`} onClick={() => pickLimit(v)}>{v}</button>
+          <span className="eyebrow">Step 3 of 4</span>
+          <h2 className="h-display h2">How much are you planning to drink tonight?</h2>
+          <div className="stack" role="radiogroup" aria-label="Drinking plan" style={{ gap: 8 }}>
+            {LEVELS.map((l, i) => (
+              <button type="button" key={l.key} role="radio" aria-checked={level?.key === l.key}
+                className={`level${level?.key === l.key ? ' on' : ''}`} onClick={() => pickLevel(l)}>
+                <span className="level-bar" aria-hidden="true">
+                  {LEVELS.map((_, j) => <span key={j} className={j <= i ? 'fill' : ''} />)}
+                </span>
+                <span className="grow" style={{ fontWeight: 700 }}>{l.label}</span>
+                <span className="muted small">{l.hint}</span>
+              </button>
             ))}
           </div>
-          {limitChoice === 'Custom' && (
-            <div className="row reveal">
-              <label className="muted" htmlFor="custom">BAC</label>
-              <input id="custom" className="input" type="number" inputMode="decimal" step="0.01" min="0.02" max="0.15"
-                value={custom} onChange={(e) => setCustom(e.target.value)} style={{ flex: 1 }} />
-              <button type="button" className="btn btn-primary" style={{ width: 'auto' }} onClick={() => setStep(4)}>Set</button>
-            </div>
-          )}
           <p className="soft" style={{ fontSize: 15 }}>
-            Measured as BAC. Most people pick 0.08. When your band reads this, your two closest friends get pinged to come find you.
+            This becomes your limit. If you go past it, your two closest friends get pinged to come find you.
           </p>
         </section>
       )}
 
       {step === 4 && (
         <section className="card stack reveal" key="s4" style={{ gap: 14 }}>
-          <span className="eyebrow">Step 4 of 5</span>
-          <h2 className="h-display h2">Pair your wristband</h2>
+          <span className="eyebrow">Step 4 of 4</span>
+          <h2 className="h-display h2">Pair your device</h2>
           <div className="row" style={{ gap: 16 }}>
             <I.Band />
             <ol className="soft" style={{ margin: 0, paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 6, fontSize: 15, lineHeight: 1.35 }}>
               <li>Turn on Bluetooth</li>
-              <li>Hold the button on your band for 3 seconds</li>
+              <li>Hold the button on your device for 3 seconds</li>
               <li>When it blinks, tap Pair</li>
             </ol>
           </div>
-          {pairing === 'idle' && <button type="button" className="btn btn-primary" onClick={pair}>Pair band</button>}
-          {pairing === 'searching' && <div role="status" className="btn btn-ghost" style={{ cursor: 'default' }}><span className="spinner" />Looking for your band…</div>}
-          {pairing === 'paired' && <div role="status" className="btn btn-ghost" style={{ borderColor: 'var(--cyan)', color: 'var(--cyan-soft)', cursor: 'default' }}>✓ Paired</div>}
-          <button type="button" className="btn-text" onClick={() => { timers.current.forEach(clearTimeout); setPairing('skipped'); setStep(5); }}>
-            No band? Continue with location only
-          </button>
-        </section>
-      )}
-
-      {step === 5 && (
-        <section className="card stack reveal" key="s5" style={{ gap: 14 }}>
-          <span className="eyebrow">Step 5 of 5</span>
-          <h2 className="h-display h2">Share your location for tonight</h2>
-          <ul className="soft" style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8, fontSize: 15, lineHeight: 1.35 }}>
-            <li><b style={{ color: 'var(--text)' }}>What:</b> your location{pairing !== 'skipped' ? ' and your band’s BAC reading' : ''}</li>
-            <li><b style={{ color: 'var(--text)' }}>Who:</b> only the people in {isCreate ? squadName : squad?.name}</li>
-            <li><b style={{ color: 'var(--text)' }}>Until:</b> 6:00 AM, or when the night ends</li>
-          </ul>
-          <p className="muted small">Your phone will ask to use your location (and on iPhone, motion &amp; orientation for the compass). Tap Allow. Keep this app open during the night.</p>
-          {err && <p className="error">{err}</p>}
-          <button type="button" className="btn btn-primary" disabled={busy} onClick={finish}>
-            {busy ? <><span className="spinner" />Setting up…</> : isCreate ? 'Turn on location & create squad' : 'Turn on location & join'}
-          </button>
+          {pairing === 'idle' && (
+            <>
+              <button type="button" className="btn btn-primary" onClick={pair}>Pair device</button>
+              <button type="button" className="btn-text" onClick={() => setPairing('skipped')}>No device? Continue without one</button>
+            </>
+          )}
+          {pairing === 'searching' && <div role="status" className="btn btn-ghost" style={{ cursor: 'default' }}><span className="spinner" />Looking for your device…</div>}
+          {(pairing === 'paired' || pairing === 'skipped') && (
+            <>
+              <div role="status" className="btn btn-ghost reveal" style={{ cursor: 'default', ...(pairing === 'paired' ? { borderColor: 'var(--cyan)', color: 'var(--cyan-soft)' } : {}) }}>
+                {pairing === 'paired' ? '✓ Device paired' : 'No device · your meter stays empty'}
+              </div>
+              {err && <p className="error">{err}</p>}
+              <button type="button" className="btn btn-primary big reveal" disabled={busy} onClick={finish}>
+                {busy ? <span className="spinner" /> : isCreate ? 'Create squad' : 'Join squad'}
+              </button>
+            </>
+          )}
         </section>
       )}
     </main>

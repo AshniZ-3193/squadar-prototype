@@ -4,7 +4,6 @@ import Welcome from './screens/Welcome.jsx';
 import Onboard from './screens/Onboard.jsx';
 import SquadApp from './screens/SquadApp.jsx';
 import Facilitator from './screens/Facilitator.jsx';
-import Results from './screens/Results.jsx';
 
 export default function App() {
   if (!configured) {
@@ -24,7 +23,6 @@ export default function App() {
         <Route path="/j/:code" element={<Onboard mode="join" key="link" />} />
         <Route path="/s/:code" element={<SquadApp />} />
         <Route path="/facilitator" element={<Facilitator />} />
-        <Route path="/results" element={<Results />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

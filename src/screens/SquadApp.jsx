@@ -1,35 +1,31 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useSquad } from '../lib/useSquad.js';
-import { getMemberId, getLocationConsent, isFeedbackDone } from '../lib/storage.js';
-import { useLocationReporter, useWakeLock } from '../lib/device.js';
+import { getMemberId } from '../lib/storage.js';
+import { useWakeLock } from '../lib/device.js';
 import { openAlert, byId, activeMembers } from '../lib/logic.js';
-import { distanceM } from '../lib/geo.js';
+import { walkFeet } from '../lib/floor.js';
 import { playAlarm, playChime } from '../lib/audio.js';
 import Lobby from './Lobby.jsx';
 import MapView from './MapView.jsx';
 import AlertTakeover from './AlertTakeover.jsx';
 import FindView from './FindView.jsx';
 import MeView from './MeView.jsx';
-import Feedback from './Feedback.jsx';
-import Thanks from './Thanks.jsx';
+import Aftermath from './Aftermath.jsx';
 
 export default function SquadApp() {
   const { code: rawCode } = useParams();
   const code = (rawCode || '').toUpperCase();
-  const location = useLocation();
   const { loading, squad, members, alerts, error, refresh } = useSquad(code);
   const meId = getMemberId(code);
   const me = byId(members, meId);
 
   const [view, setView] = useState('main'); // main | me | map
   const [dismissed, setDismissed] = useState(() => new Set()); // alerts I closed the takeover for
-  const [feedbackDone, setFeedbackDoneState] = useState(() => isFeedbackDone(code));
   const [toast, setToast] = useState('');
 
   const live = squad?.status === 'live';
   const ended = squad?.status === 'ended' || me?.status === 'left';
-  useLocationReporter(me, Boolean(me && !ended && getLocationConsent(code)));
   useWakeLock(Boolean(me && !ended));
 
   const alert = live ? openAlert(alerts) : null;
@@ -75,8 +71,8 @@ export default function SquadApp() {
     return alert.going_ids
       .map((id) => byId(members, id))
       .filter(Boolean)
-      .map((m) => ({ m, d: distanceM(m, me) }))
-      .filter((x) => x.d != null && x.d < 50)[0] || null;
+      .map((m) => ({ m, d: walkFeet(m, me) }))
+      .filter((x) => x.d != null && x.d < 25)[0] || null;
   }, [iAmSubject, alert, members, me]);
 
   if (loading) return <main className="screen center"><div className="spinner" /></main>;
@@ -107,7 +103,7 @@ export default function SquadApp() {
 
   let screen;
   if (ended) {
-    screen = feedbackDone ? <Thanks /> : <Feedback {...ctx} onDone={() => setFeedbackDoneState(true)} />;
+    screen = <Aftermath {...ctx} />;
   } else if (squad.status === 'lobby') {
     screen = <Lobby {...ctx} />;
   } else if (view === 'me') {
@@ -115,7 +111,7 @@ export default function SquadApp() {
   } else if (alert && iAmGoing && view !== 'map') {
     screen = <FindView {...ctx} alert={alert} subject={subject} onBack={() => setView('map')} />;
   } else {
-    screen = <MapView {...ctx} alert={alert} subject={subject} iAmGoing={iAmGoing} onNavigate={() => setView('main')} onMe={() => setView('me')} locDenied={location.state?.locDenied} />;
+    screen = <MapView {...ctx} alert={alert} subject={subject} iAmGoing={iAmGoing} onNavigate={() => setView('main')} onMe={() => setView('me')} />;
   }
 
   return (
@@ -129,7 +125,7 @@ export default function SquadApp() {
         <div className="beacon" role="alert">
           <span className="h-display" style={{ fontSize: 34 }}>{subjectClose.m.name} is close</span>
           <p className="soft" style={{ fontSize: 18 }}>Hold your phone up so they can spot you.</p>
-          <p className="muted small">(With the real band, your wristband would glow and beep now.)</p>
+          <p className="muted small">(With the real device, it would glow and beep now.)</p>
         </div>
       )}
       {toast && <div className="toast" role="status">{toast}</div>}

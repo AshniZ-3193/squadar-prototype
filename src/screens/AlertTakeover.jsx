@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { byId, fmtBac, namesList } from '../lib/logic.js';
-import { distanceM, formatDistance, hasLoc } from '../lib/geo.js';
+import { walkFeet, formatFeet } from '../lib/floor.js';
 import { joinGoing, resolveAlert } from '../lib/actions.js';
-import { requestOrientationPermission } from '../lib/device.js';
 import * as I from '../components/Icons.jsx';
 
 // Shrinks the name so it always fits on one line (Unbounded caps are ~0.95em wide).
@@ -14,11 +13,10 @@ function nameSize(name) {
 export default function AlertTakeover({ members, me, alert, subject, onDismiss }) {
   const [busy, setBusy] = useState(false);
   const others = alert.responder_ids.filter((id) => id !== me.id).map((id) => byId(members, id)).filter(Boolean);
-  const d = hasLoc(me) && hasLoc(subject) ? distanceM(me, subject) : null;
+  const d = walkFeet(me, subject);
   const ticker = 'SQUAD ALERT ● SQUAD ALERT ● SQUAD ALERT ● SQUAD ALERT ●';
 
   const go = async () => {
-    requestOrientationPermission(); // inside the tap, for the compass arrow on iPhone
     setBusy(true);
     await joinGoing(alert.id, me.id);
   };
@@ -39,7 +37,7 @@ export default function AlertTakeover({ members, me, alert, subject, onDismiss }
           <span className="t-line">reached their limit</span>
         </h1>
         <span className="t-num">{fmtBac(alert.bac)}</span>
-        <span className="t-sub">BAC{d != null ? ` · ${formatDistance(d)} away` : ''}</span>
+        <span className="t-sub">BAC{d != null ? ` · ${formatFeet(d)} away` : ''}</span>
       </div>
       <div className="takeover-sheet">
         <div className="row">

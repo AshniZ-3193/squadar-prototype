@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import PinGate from '../components/PinGate.jsx';
-import LiveMap from '../components/LiveMap.jsx';
+import FloorMap from '../components/FloorMap.jsx';
 import { useSquad } from '../lib/useSquad.js';
-import { fireAlert, escalate, startNight, endNight, resolveAlert } from '../lib/actions.js';
-import { activeMembers, byId, fmtBac, num, openAlert, meter, namesList } from '../lib/logic.js';
-import { hasLoc, offset, DEFAULT_CENTER, distanceM, formatDistance } from '../lib/geo.js';
-import { getPositionOnce } from '../lib/device.js';
+import { fireAlert, escalate, startNight, endNight, resolveAlert, placeMember } from '../lib/actions.js';
+import { activeMembers, byId, fmtBac, num, openAlert, meter, namesList, levelFor } from '../lib/logic.js';
+import { LANDMARKS, LANDMARK_KEYS, landmarkOf, walkFeet, formatFeet, spotAt } from '../lib/floor.js';
 
 export default function Facilitator() {
   return <PinGate title="Facilitator">{() => <Picker />}</PinGate>;
@@ -42,7 +41,6 @@ function Picker() {
         <input className="input code" placeholder="CODE" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
         <button type="button" className="btn btn-primary" style={{ width: 'auto' }} onClick={() => code && setChosen(code)}>Open</button>
       </div>
-      <a href="/results" className="small">See feedback results →</a>
     </main>
   );
 }
@@ -105,30 +103,29 @@ function Control({ code, onExit }) {
 
   const simNight = async () => {
     await Promise.all(members.filter((m) => m.has_band && meter(m).level !== 'over').map((m) =>
-      supabase.from('members').update({ bac: Math.round((0.01 + Math.random() * 0.04) * 1000) / 1000 }).eq('id', m.id)));
-    say('Gave everyone a starting BAC (0.01–0.05)');
+      supabase.from('members').update({ bac: Math.round(num(m.bac_limit) * (0.2 + Math.random() * 0.5) * 1000) / 1000 }).eq('id', m.id)));
+    say('Gave everyone a random BAC under their limit');
   };
 
-  const scatter = async () => {
-    const here = await getPositionOnce(5000);
-    const center = here.ok ? { lat: here.lat, lng: here.lng } : (members.find(hasLoc) || DEFAULT_CENTER);
-    const n = members.length;
+  // Put each person at a different landmark (round-robin, random order).
+  const spread = async () => {
+    const keys = [...LANDMARK_KEYS].sort(() => Math.random() - 0.5);
+    const counts = {};
     await Promise.all(members.map((m, i) => {
-      const angle = (i / n) * 2 * Math.PI;
-      const r = 150 + (i % 3) * 250;
-      const p = offset(center, Math.cos(angle) * r, Math.sin(angle) * r);
-      return supabase.from('members').update({ ...p, location_source: 'manual', location_updated_at: new Date().toISOString() }).eq('id', m.id);
+      const k = keys[i % keys.length];
+      const n = counts[k] || 0;
+      counts[k] = n + 1;
+      return supabase.from('members').update({ ...spotAt(k, n), location_source: 'manual', location_updated_at: new Date().toISOString() }).eq('id', m.id);
     }));
-    say('Placed everyone around you (manual positions)');
+    say('Spread everyone across the floor. Tell each person where to stand.');
   };
-
-  const place = async (latlng) => {
+  const moveTo = async (m, key) => { await placeMember(m, key, members); };
+  const onLandmark = async (key) => {
     if (!placing) return;
-    await supabase.from('members').update({ lat: latlng.lat, lng: latlng.lng, location_source: 'manual', location_updated_at: new Date().toISOString() }).eq('id', placing);
+    const m = byId(all, placing);
+    if (m) await moveTo(m, key);
     setPlacing(null);
   };
-  const backToGps = (m) => supabase.from('members').update({ location_source: 'gps', accuracy_m: null }).eq('id', m.id);
-  const allGps = () => Promise.all(members.map((m) => backToGps(m))).then(() => say('Everyone back on live GPS'));
 
   const subject = alert ? byId(all, alert.subject_member_id) : null;
   const age = alert ? Math.round((Date.now() - new Date(alert.created_at).getTime()) / 1000) : 0;
@@ -145,14 +142,13 @@ function Control({ code, onExit }) {
 
       <div className="fac-grid">
         <div className="stack">
-          <div className="fac-map" style={{ position: 'relative' }}>
-            <LiveMap members={members} subjectId={subject?.id} goingIds={alert?.going_ids || []} onMapClick={place} selectedId={placing} />
+          <div className="fac-map">
+            <FloorMap members={members} subjectId={subject?.id} goingIds={alert?.going_ids || []} onLandmark={placing ? onLandmark : null} selectedId={placing} />
           </div>
-          {placing && <p className="banner-cyan small">Tap the map to place <b>{byId(all, placing)?.name}</b>. <button type="button" className="btn-text" onClick={() => setPlacing(null)}>Cancel</button></p>}
+          {placing && <p className="banner-cyan small">Tap a landmark circle to move <b>{byId(all, placing)?.name}</b> there. <button type="button" className="btn-text" onClick={() => setPlacing(null)}>Cancel</button></p>}
           <div className="row" style={{ flexWrap: 'wrap' }}>
-            <button type="button" className="btn btn-ghost" style={{ width: 'auto' }} onClick={scatter}>Scatter demo positions</button>
-            <button type="button" className="btn btn-ghost" style={{ width: 'auto' }} onClick={allGps}>Everyone on live GPS</button>
-            <button type="button" className="btn btn-ghost" style={{ width: 'auto' }} onClick={simNight}>Random starting BACs</button>
+            <button type="button" className="btn btn-ghost" style={{ width: 'auto' }} onClick={spread}>Spread everyone out</button>
+            <button type="button" className="btn btn-ghost" style={{ width: 'auto' }} onClick={simNight}>Random BACs (under limits)</button>
           </div>
 
           <div className="card stack">
@@ -174,12 +170,13 @@ function Control({ code, onExit }) {
         </div>
 
         <div className="stack">
-          <p className="muted small">Responders: tick up to 2 people to alert instead of the 2 closest (useful indoors). Leave empty for closest-by-GPS.</p>
+          <p className="muted small">Responders: tick up to 2 people to get the full-screen alert. Leave empty to alert the 2 closest on the floor plan.</p>
           <ul className="list">
             {members.map((m) => {
               const val = draft[m.id] ?? num(m.bac);
               const lvl = meter({ ...m, bac: val }).level;
-              const d = subject && m.id !== subject.id ? distanceM(m, subject) : null;
+              const d = subject && m.id !== subject.id ? walkFeet(m, subject) : null;
+              const spot = landmarkOf(m);
               return (
                 <li key={m.id} style={{ flexDirection: 'column', alignItems: 'stretch', padding: '12px 14px', gap: 8 }}>
                   <div className="row" style={{ flexWrap: 'wrap' }}>
@@ -187,9 +184,8 @@ function Control({ code, onExit }) {
                       <input type="checkbox" checked={picked.includes(m.id)} onChange={(e) => setPicked((p) => e.target.checked ? [...p, m.id].slice(-2) : p.filter((x) => x !== m.id))} />
                     </label>
                     <b className="grow">{m.name}{m.id === squad.host_member_id ? ' (host)' : ''}</b>
-                    <span className={`tag${lvl === 'over' ? ' red' : ''}`}>{m.has_band ? `${fmtBac(val)} / ${fmtBac(m.bac_limit)}` : 'no band'}</span>
-                    <span className="tag">{m.location_source === 'manual' ? 'placed' : !hasLoc(m) ? 'no location' : m.accuracy_m == null ? 'GPS (waiting)' : `GPS ±${Math.round(m.accuracy_m)}m`}</span>
-                    {d != null && <span className="tag cyan">{formatDistance(d)} from {subject.name}</span>}
+                    <span className={`tag${lvl === 'over' ? ' red' : ''}`}>{m.has_band ? `${fmtBac(val)} / ${fmtBac(m.bac_limit)} (${levelFor(m.bac_limit).label})` : 'no device'}</span>
+                    {d != null && <span className="tag cyan">{formatFeet(d)} from {subject.name}</span>}
                   </div>
                   {m.has_band && (
                     <div className="row">
@@ -200,8 +196,12 @@ function Control({ code, onExit }) {
                   )}
                   <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
                     {m.has_band && <button type="button" className="btn btn-primary" style={{ width: 'auto', minHeight: 40, fontSize: 14 }} onClick={() => hitLimit(m)}>Hit limit</button>}
-                    <button type="button" className="btn btn-ghost" style={{ width: 'auto', minHeight: 40, fontSize: 14 }} onClick={() => setPlacing(m.id)}>Place on map</button>
-                    {m.location_source === 'manual' && <button type="button" className="btn btn-ghost" style={{ width: 'auto', minHeight: 40, fontSize: 14 }} onClick={() => backToGps(m)}>Back to GPS</button>}
+                    <label className="row small" style={{ gap: 6 }}>
+                      <span className="muted">At</span>
+                      <select className="select" value={spot || ''} onChange={(e) => moveTo(m, e.target.value)} aria-label={`Move ${m.name}`}>
+                        {LANDMARK_KEYS.map((k) => <option key={k} value={k}>{LANDMARKS[k].label}</option>)}
+                      </select>
+                    </label>
                   </div>
                 </li>
               );

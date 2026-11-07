@@ -1,7 +1,8 @@
 import { supabase } from './supabase.js';
 import { newCode, rankHelpers, byId, num } from './logic.js';
+import { spotAt, landmarkOf } from './floor.js';
 
-export async function createSquad({ squadName, name, limit, hasBand, loc }) {
+export async function createSquad({ squadName, name, limit, hasBand }) {
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = newCode();
     const { data: squad, error } = await supabase.from('squads')
@@ -10,7 +11,7 @@ export async function createSquad({ squadName, name, limit, hasBand, loc }) {
       if (error.code === '23505') continue; // code taken, try another
       throw error;
     }
-    const member = await addMember(squad.id, { name, limit, hasBand, loc });
+    const member = await addMember(squad.id, { name, limit, hasBand });
     await supabase.from('squads').update({ host_member_id: member.id }).eq('id', squad.id);
     return { squad, member };
   }
@@ -23,38 +24,43 @@ export async function findSquad(code) {
   return data;
 }
 
-export async function addMember(squadId, { name, limit, hasBand, loc }) {
+export async function addMember(squadId, { name, limit, hasBand }) {
+  // Everyone arrives at the elevators on the staged floor plan.
+  const { data: others } = await supabase.from('members').select('lat,lng').eq('squad_id', squadId).eq('status', 'active');
+  const atElevators = (others || []).filter((m) => landmarkOf(m) === 'elevators').length;
   const row = {
     squad_id: squadId,
     name: name.trim() || 'Friend',
     bac_limit: limit,
     has_band: hasBand,
+    ...spotAt('elevators', atElevators),
+    location_source: 'manual',
+    location_updated_at: new Date().toISOString(),
   };
-  if (loc?.ok) {
-    Object.assign(row, {
-      lat: loc.lat, lng: loc.lng, accuracy_m: loc.accuracy, location_source: 'gps',
-      location_updated_at: new Date().toISOString(),
-    });
-  }
   const { data, error } = await supabase.from('members').insert(row).select().single();
   if (error) throw error;
   return data;
 }
 
+// Facilitator: move someone to a landmark on the floor plan.
+export async function placeMember(member, key, members) {
+  const others = members.filter((m) => m.id !== member.id && m.status === 'active' && landmarkOf(m) === key).length;
+  await supabase.from('members').update({
+    ...spotAt(key, others), location_source: 'manual', location_updated_at: new Date().toISOString(),
+  }).eq('id', member.id);
+}
+
 export const startNight = (squadId) =>
   supabase.from('squads').update({ status: 'live', started_at: new Date().toISOString() }).eq('id', squadId);
-
-const WIPE = { lat: null, lng: null, accuracy_m: null, location_source: null, location_updated_at: null };
 
 export async function endNight(squadId) {
   await supabase.from('alerts').update({ status: 'resolved', resolution: 'night_ended', resolved_at: new Date().toISOString() })
     .eq('squad_id', squadId).eq('status', 'open');
   await supabase.from('squads').update({ status: 'ended', ended_at: new Date().toISOString() }).eq('id', squadId);
-  await supabase.from('members').update(WIPE).eq('squad_id', squadId);
 }
 
 export const leaveSquad = (memberId) =>
-  supabase.from('members').update({ status: 'left', ...WIPE }).eq('id', memberId);
+  supabase.from('members').update({ status: 'left' }).eq('id', memberId);
 
 // Add me to the people going for this alert. Re-checks to survive two taps at once.
 export async function joinGoing(alertId, memberId) {
@@ -96,7 +102,3 @@ export async function escalate(alert, members) {
   await supabase.from('alerts').update({ responder_ids: [...alert.responder_ids, next.id] }).eq('id', alert.id);
 }
 
-export async function submitFeedback(row) {
-  const { error } = await supabase.from('feedback').insert(row);
-  if (error) throw error;
-}

@@ -19,8 +19,8 @@ export default function Welcome() {
           One person creates the squad. Everyone else joins with the code or link.
         </p>
         <p className="muted" style={{ textAlign: 'center', fontSize: 12, lineHeight: 1.45 }}>
-          This is a test prototype. Wristband readings are simulated. We collect your first name,
-          your location during the session (deleted when the night ends) and your feedback.
+          This is a test prototype. The floor map and drink readings are staged by the facilitator.
+          We only store the name you enter.
         </p>
       </div>
     </main>
