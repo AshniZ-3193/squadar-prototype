@@ -68,30 +68,49 @@ function NightCurve({ n }) {
   const W = 320; const H = 150; const P = { l: 8, r: 8, t: 22, b: 22 };
   const dur = Math.max(1, n.end - n.start);
   const peakAt = n.firstHit ? Math.min(0.9, Math.max(0.2, (n.firstHit - n.start) / dur)) : 0.7;
+  const N = 30;
   const pts = [];
-  for (let i = 0; i <= 30; i++) {
-    const t = i / 30;
+  for (let i = 0; i <= N; i++) {
+    const t = i / N;
     const v = t <= peakAt ? n.peak * Math.sin((t / peakAt) * Math.PI / 2) : n.peak * (1 - 0.18 * ((t - peakAt) / (1 - peakAt || 1)));
     pts.push([t, v]);
   }
+  const peakIdx = Math.round(peakAt * N);
+  const [idx, setIdx] = useState(peakIdx);
   const top = Math.max(n.limit * 1.25, n.peak * 1.15, 0.02);
   const x = (t) => P.l + t * (W - P.l - P.r);
   const y = (v) => H - P.b - (v / top) * (H - P.t - P.b);
   const d = pts.map(([t, v], i) => `${i ? 'L' : 'M'}${x(t).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
   const area = `${d} L${x(1)},${y(0)} L${x(0)},${y(0)} Z`;
   const color = n.over ? C.over : C.line;
+  const pick = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const t = Math.min(1, Math.max(0, ((e.clientX - r.left) / r.width * W - P.l) / (W - P.l - P.r)));
+    setIdx(Math.round(t * N));
+  };
+  const [st, sv] = pts[idx];
+  const when = new Date(n.start.getTime() + st * dur);
+  const sx = x(st);
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={`Estimated BAC through the night, peaking at ${fmtBac(n.peak)} against a limit of ${fmtBac(n.limit)}`}>
-      <line x1={P.l} x2={W - P.r} y1={y(0)} y2={y(0)} stroke={C.grid} />
-      <line x1={P.l} x2={W - P.r} y1={y(n.limit)} y2={y(n.limit)} stroke={C.over} strokeOpacity="0.55" />
-      <text x={W - P.r} y={y(n.limit) - 5} textAnchor="end" fill={C.axis} fontSize="11">your limit {fmtBac(n.limit)}</text>
-      <path d={area} fill={color} fillOpacity="0.1" />
-      <path d={d} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={x(peakAt)} cy={y(n.peak)} r="5" fill={color} stroke={C.surface} strokeWidth="2" />
-      <text x={x(peakAt)} y={y(n.peak) - 10} textAnchor="middle" fill="#F4EEFF" fontSize="12" fontWeight="700">peak {fmtBac(n.peak)}</text>
-      <text x={P.l} y={H - 5} fill={C.axis} fontSize="11">{fmtTime(n.start)}</text>
-      <text x={W - P.r} y={H - 5} textAnchor="end" fill={C.axis} fontSize="11">{fmtTime(n.end)}</text>
-    </svg>
+    <div className="stack" style={{ gap: 4 }}>
+      <span className="small" style={{ minHeight: 20 }}>
+        <b>{fmtTime(when)}</b> <span className="soft">· est. BAC {fmtBac(sv)}{sv >= n.limit ? ' · over your limit' : ''}{idx === peakIdx ? ' · your peak' : ''}</span>
+      </span>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" style={{ touchAction: 'none', cursor: 'crosshair' }}
+        aria-label={`Estimated BAC through the night, peaking at ${fmtBac(n.peak)} against a limit of ${fmtBac(n.limit)}. Tap or drag to read a time.`}
+        onPointerDown={pick} onPointerMove={(e) => e.buttons && pick(e)}>
+        <line x1={P.l} x2={W - P.r} y1={y(0)} y2={y(0)} stroke={C.grid} />
+        <line x1={P.l} x2={W - P.r} y1={y(n.limit)} y2={y(n.limit)} stroke={C.over} strokeOpacity="0.55" />
+        <text x={W - P.r} y={y(n.limit) - 5} textAnchor="end" fill={C.axis} fontSize="11">your limit {fmtBac(n.limit)}</text>
+        <path d={area} fill={color} fillOpacity="0.1" />
+        <path d={d} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        <line x1={sx} x2={sx} y1={P.t - 6} y2={y(0)} stroke="#F4EEFF" strokeOpacity="0.35" />
+        <circle cx={sx} cy={y(sv)} r="5" fill={color} stroke={C.surface} strokeWidth="2" />
+        <text x={P.l} y={H - 5} fill={C.axis} fontSize="11">{fmtTime(n.start)}</text>
+        <text x={W - P.r} y={H - 5} textAnchor="end" fill={C.axis} fontSize="11">{fmtTime(n.end)}</text>
+      </svg>
+      <span className="muted" style={{ fontSize: 12 }}>Tap or drag across the chart</span>
+    </div>
   );
 }
 
@@ -127,43 +146,67 @@ function WeekBars({ days, limit, selected, onSelect }) {
 }
 
 function WeeksLine({ weeks }) {
-  const W = 320; const H = 150; const P = { l: 24, r: 14, t: 20, b: 24 };
+  const W = 320; const H = 150; const P = { l: 24, r: 14, t: 16, b: 24 };
+  const [sel, setSel] = useState(weeks.length - 1);
   const top = Math.max(3, ...weeks.map((w) => w.count));
   const x = (i) => P.l + (i / (weeks.length - 1)) * (W - P.l - P.r);
   const y = (v) => H - P.b - (v / top) * (H - P.t - P.b);
   const d = weeks.map((w, i) => `${i ? 'L' : 'M'}${x(i)},${y(w.count)}`).join(' ');
-  const last = weeks[weeks.length - 1];
   const months = weeks.map((w, i) => ({ i, m: w.start.toLocaleDateString(undefined, { month: 'short' }) }))
     .filter((w, i, arr) => i === 0 || arr[i - 1].m !== w.m);
+  const w = weeks[sel];
+  const step = (W - P.l - P.r) / (weeks.length - 1);
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={`Nights out per week, past 12 weeks. This week: ${last.count}`}>
-      {[0, top].map((v) => (
-        <g key={v}>
-          <line x1={P.l} x2={W - P.r} y1={y(v)} y2={y(v)} stroke={C.grid} />
-          <text x={P.l - 6} y={y(v) + 4} textAnchor="end" fill={C.axis} fontSize="11">{v}</text>
-        </g>
-      ))}
-      <path d={`${d} L${x(weeks.length - 1)},${y(0)} L${x(0)},${y(0)} Z`} fill={C.line} fillOpacity="0.08" />
-      <path d={d} fill="none" stroke={C.line} strokeWidth="2" strokeLinejoin="round" />
-      {weeks.map((w, i) => <circle key={i} cx={x(i)} cy={y(w.count)} r="4" fill={i === weeks.length - 1 ? C.line : C.surface} stroke={i === weeks.length - 1 ? C.surface : C.line} strokeWidth="2" />)}
-      <text x={W - P.r} y={12} textAnchor="end" fill="#F4EEFF" fontSize="12" fontWeight="700">This week: {last.count}</text>
-      {months.map((m) => <text key={m.i} x={x(m.i)} y={H - 6} textAnchor="middle" fill={C.axis} fontSize="11">{m.m}</text>)}
-    </svg>
+    <div className="stack" style={{ gap: 4 }}>
+      <span className="small" style={{ minHeight: 20 }}>
+        <b>{sel === weeks.length - 1 ? 'This week' : `Week of ${w.start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`}</b>
+        <span className="soft"> · {w.count} {w.count === 1 ? 'night' : 'nights'} out{w.over ? ` · ${w.over} over your limit` : ''}</span>
+      </span>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Nights out per week, past 12 weeks. Tap a week for details.">
+        {[0, top].map((v) => (
+          <g key={v}>
+            <line x1={P.l} x2={W - P.r} y1={y(v)} y2={y(v)} stroke={C.grid} />
+            <text x={P.l - 6} y={y(v) + 4} textAnchor="end" fill={C.axis} fontSize="11">{v}</text>
+          </g>
+        ))}
+        <path d={`${d} L${x(weeks.length - 1)},${y(0)} L${x(0)},${y(0)} Z`} fill={C.line} fillOpacity="0.08" />
+        <path d={d} fill="none" stroke={C.line} strokeWidth="2" strokeLinejoin="round" />
+        <line x1={x(sel)} x2={x(sel)} y1={P.t - 4} y2={y(0)} stroke="#F4EEFF" strokeOpacity="0.3" />
+        {weeks.map((wk, i) => (
+          <g key={i} onClick={() => setSel(i)} style={{ cursor: 'pointer' }}>
+            <rect x={x(i) - step / 2} y={0} width={step} height={H} fill="transparent" />
+            <circle cx={x(i)} cy={y(wk.count)} r={i === sel ? 6 : 4} fill={i === sel ? C.line : C.surface} stroke={i === sel ? C.surface : C.line} strokeWidth="2" />
+          </g>
+        ))}
+        {months.map((m) => <text key={m.i} x={x(m.i)} y={H - 6} textAnchor="middle" fill={C.axis} fontSize="11">{m.m}</text>)}
+      </svg>
+      <span className="muted" style={{ fontSize: 12 }}>Tap a week to see it</span>
+    </div>
   );
 }
 
 function Calendar({ days }) {
+  const lastIdx = days.findIndex((d) => d.night?.isLast);
+  const [sel, setSel] = useState(lastIdx);
+  const pick = days[sel];
   return (
-    <div className="stack" style={{ gap: 6 }}>
+    <div className="stack" style={{ gap: 8 }}>
+      <span className="small" style={{ minHeight: 20 }}>
+        {pick?.night
+          ? <><b>{pick.night.isLast ? 'Last night' : fmtDay(pick.date)}</b><span className="soft"> · peak {fmtBac(pick.night.peak)} · ~{pick.night.drinks} drinks{pick.night.over ? ' · over your limit' : ' · under your limit'}</span></>
+          : <span className="soft">Tap a dot to see that night</span>}
+      </span>
       <div className="cal">
         {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => <span key={i} className="cal-head">{d}</span>)}
         {days.map((d, i) => {
           const size = d.night ? 10 + Math.min(1.4, d.night.peak / d.limit) * 10 : 4;
-          return (
-            <span key={i} className="cal-cell" title={d.night ? `${fmtDay(d.date)} · peak ${fmtBac(d.night.peak)}${d.night.over ? ' · over limit' : ''}` : fmtDay(d.date)}>
-              <span style={{ width: size, height: size, borderRadius: '50%', background: d.future ? 'transparent' : d.night ? (d.night.over ? C.over : C.under) : C.grid, outline: d.night?.isLast ? '2px solid #F4EEFF' : 'none', outlineOffset: 2 }} />
-            </span>
-          );
+          const dot = <span style={{ width: size, height: size, borderRadius: '50%', background: d.future ? 'transparent' : d.night ? (d.night.over ? C.over : C.under) : C.grid, outline: d.night?.isLast ? '2px solid #F4EEFF' : 'none', outlineOffset: 2 }} />;
+          return d.night ? (
+            <button key={i} type="button" className={`cal-cell cal-btn${i === sel ? ' on' : ''}`} onClick={() => setSel(i)}
+              aria-label={`${fmtDay(d.date)}, peak ${fmtBac(d.night.peak)}${d.night.over ? ', over your limit' : ''}`} aria-pressed={i === sel}>
+              {dot}
+            </button>
+          ) : <span key={i} className="cal-cell" aria-hidden="true">{dot}</span>;
         })}
       </div>
       <div className="row small muted" style={{ gap: 14, flexWrap: 'wrap' }}>
@@ -207,7 +250,8 @@ export default function Aftermath({ squad, allMembers, alerts, me }) {
   const weeks = [...Array(12)].map((_, i) => {
     const start = new Date(weekStart.getTime() - (11 - i) * 7 * DAY);
     const end = new Date(start.getTime() + 7 * DAY);
-    return { start, count: nights.filter((n) => n.date >= start && n.date < end).length };
+    const inWeek = nights.filter((n) => n.date >= start && n.date < end);
+    return { start, count: inWeek.length, over: inWeek.filter((n) => n.over).length };
   });
   const calStart = new Date(weekStart.getTime() - 21 * DAY);
   const calDays = [...Array(28)].map((_, i) => {
@@ -291,6 +335,10 @@ export default function Aftermath({ squad, allMembers, alerts, me }) {
             <span className="h-display" style={{ fontSize: 26 }}>{monthNights.length} nights out in the past 4 weeks</span>
             <span className="soft">{monthNights.filter((n) => n.over).length} over your limit · about {monthNights.reduce((a, n) => a + n.drinks, 0)} drinks</span>
           </section>
+          <section className="card stack" style={{ gap: 8 }}>
+            <b>Nights out per week</b>
+            <WeeksLine weeks={weeks} />
+          </section>
           <section className="card stack" style={{ gap: 12 }}>
             <b>Every night, past 4 weeks</b>
             <Calendar days={calDays} />
@@ -299,10 +347,6 @@ export default function Aftermath({ squad, allMembers, alerts, me }) {
             <Stat label="Nights in a row under your limit" value={streak} />
             <Stat label="Busiest night" value={['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][(() => { const c = Array(7).fill(0); nights.forEach((n) => c[n.date.getDay()]++); return c.indexOf(Math.max(...c)); })()]} />
           </div>
-          <section className="card stack" style={{ gap: 8 }}>
-            <b>Nights out per week</b>
-            <WeeksLine weeks={weeks} />
-          </section>
         </>
       )}
 

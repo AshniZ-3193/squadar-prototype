@@ -1,4 +1,4 @@
-import { PLAN, ROOMS, PARTITIONS, LANDMARKS, LANDMARK_KEYS, posOf, landmarkOf } from '../lib/floor.js';
+import { PLAN, SX, ROOMS, PARTITIONS, LANDMARKS, LANDMARK_KEYS, posOf, landmarkOf } from '../lib/floor.js';
 import { meter, fmtBac, initial } from '../lib/logic.js';
 
 const pct = (v, total) => `${(v / total) * 100}%`;
@@ -41,19 +41,19 @@ export default function FloorMap({
           <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#B4A8D6" strokeOpacity="0.55" strokeWidth="1.4" strokeLinecap="round" />
         ))}
         {/* elevator cars with up/down arrows */}
-        {[[129, 182], [129, 202]].map(([x, y], i) => (
+        {[[129 * SX, 182], [129 * SX, 202]].map(([x, y], i) => (
           <g key={i}>
             <rect x={x} y={y} width="11" height="14" rx="1.5" fill="none" stroke="#B4A8D6" strokeOpacity="0.6" strokeWidth="1.2" />
             <path d={`M${x + 5.5} ${y + 3} l3 3 h-6 z M${x + 5.5} ${y + 11} l3 -3 h-6 z`} fill="#B4A8D6" fillOpacity="0.7" />
           </g>
         ))}
         {/* stairs at the end of the hallway */}
-        {[0, 1, 2, 3, 4].map((i) => <line key={i} x1={8 + i * 3} y1="20" x2={8 + i * 3} y2="44" stroke="#B4A8D6" strokeOpacity="0.35" strokeWidth="1" />)}
+        {[0, 1, 2, 3, 4].map((i) => <line key={i} x1={(8 + i * 3) * SX} y1="20" x2={(8 + i * 3) * SX} y2="44" stroke="#B4A8D6" strokeOpacity="0.35" strokeWidth="1" />)}
         {/* outer walls */}
         <rect x="5" y="5" width={PLAN.w - 10} height={PLAN.h - 10} rx="3" fill="none" stroke="#D9D0F5" strokeOpacity="0.85" strokeWidth="2.6" />
-        <text x="76" y="200" textAnchor="middle" fill="#6F6390" fontSize="5.6" fontWeight="700" letterSpacing="1" fontFamily="Space Grotesk, sans-serif"
-          transform="rotate(-90 76 200)">CORRIDOR</text>
-        <text x="60" y="13" textAnchor="middle" fill="#6F6390" fontSize="5.6" fontWeight="700" letterSpacing="1" fontFamily="Space Grotesk, sans-serif">HALLWAY</text>
+        <text x={76 * SX} y="200" textAnchor="middle" fill="#6F6390" fontSize="5.6" fontWeight="700" letterSpacing="1" fontFamily="Space Grotesk, sans-serif"
+          transform={`rotate(-90 ${76 * SX} 200)`}>CORRIDOR</text>
+        <text x={60 * SX} y="13" textAnchor="middle" fill="#6F6390" fontSize="5.6" fontWeight="700" letterSpacing="1" fontFamily="Space Grotesk, sans-serif">HALLWAY</text>
         {route && (
           <polyline points={route.pts.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke="#3DE0FF"
             strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="0.1 5"

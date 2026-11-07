@@ -21,7 +21,7 @@ export default function FindView({ members, me, alert, subject, onBack }) {
         <span className="tag red" style={{ fontFamily: 'var(--display)', fontSize: 14, padding: '6px 10px' }}>{fmtBac(alert.bac)}</span>
       </div>
 
-      <div style={{ width: '100%', maxWidth: 'min(100%, calc((100dvh - 420px) * 0.652))', minWidth: 210, margin: '0 auto' }}>
+      <div style={{ width: '100%', maxWidth: 'max(250px, calc((100dvh - 430px) * 0.86))', margin: '0 auto' }}>
         <FloorMap members={members} meId={me.id} subjectId={subject.id} goingIds={alert.going_ids} route={r} compact />
       </div>
 

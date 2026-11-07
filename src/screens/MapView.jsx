@@ -53,12 +53,12 @@ export default function MapView({ squad, members, me, alert, subject, iAmGoing, 
         </div>
       )}
 
-      <div className="stack" style={{ gap: 6, flex: 1, justifyContent: 'center' }}>
+      <div className="stack" style={{ gap: 6, flex: 1 }}>
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <span className="eyebrow" style={{ fontSize: 12 }}>Tangen Hall · 4th floor</span>
           {mySpot && <span className="tag">You’re at: {LANDMARKS[mySpot].short}</span>}
         </div>
-        <div style={{ width: '100%', maxWidth: 'min(100%, calc((100dvh - 430px) * 0.652))', minWidth: 230, margin: '0 auto' }}>
+        <div style={{ width: '100%' }}>
           <FloorMap members={members} meId={me.id} subjectId={subject?.id} goingIds={alert?.going_ids || []} />
         </div>
       </div>
