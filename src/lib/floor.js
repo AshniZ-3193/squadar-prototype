@@ -4,27 +4,32 @@
 
 export const PLAN = { w: 150, h: 230 };
 
+// Rooms are drawn as walls with door gaps, like the original sketch.
+// door: which wall the opening is on, where it starts along that wall, and its width.
 export const ROOMS = [
-  { key: 'classroom', label: 'Classroom', x: 8, y: 52, w: 44, h: 46 },
-  { key: 'offices', label: '', x: 96, y: 8, w: 46, h: 92 },
-  { key: 'conference', label: 'Conference', x: 8, y: 106, w: 44, h: 62 },
-  { key: 'bathrooms', label: 'Bathrooms', x: 96, y: 108, w: 46, h: 52 },
-  { key: 'elevators', label: 'Elevators', x: 96, y: 168, w: 46, h: 52 },
+  { key: 'classroom', label: 'Classroom', x: 8, y: 52, w: 44, h: 46, door: { side: 'top', at: 10, len: 14 } },
+  { key: 'conference', label: 'Conference', x: 8, y: 104, w: 44, h: 64, door: { side: 'right', at: 26, len: 14 } },
+  { key: 'store', label: '', x: 8, y: 174, w: 44, h: 48, door: { side: 'right', at: 8, len: 10 } },
+  { key: 'officeA', label: '', x: 96, y: 8, w: 46, h: 44, door: { side: 'left', at: 12, len: 10 } },
+  { key: 'officeB', label: '', x: 96, y: 58, w: 46, h: 44, door: { side: 'left', at: 24, len: 10 } },
+  { key: 'bathrooms', label: 'Bathrooms', x: 96, y: 108, w: 46, h: 54, door: { side: 'left', at: 22, len: 14 } },
+  { key: 'elevators', label: 'Elevators', x: 96, y: 168, w: 46, h: 54, door: { side: 'left', at: 10, len: 34 } },
 ];
 
-// Walkable space: the main corridor and the hallway off its far end.
-export const HALLS = [
-  { x: 58, y: 18, w: 32, h: 204 }, // main corridor
-  { x: 8, y: 18, w: 82, h: 28 }, // hallway to the classroom
+// Interior partitions, purely for the drawn look (x1, y1, x2, y2).
+export const PARTITIONS = [
+  [119, 150, 119, 162], // between the two bathrooms
+  [96, 30, 112, 30], [119, 58, 119, 76], // office cubicles
+  [30, 174, 30, 190], [8, 198, 22, 198], // storage shelves
 ];
 
 // Where people stand. `node` is where the landmark meets the walking route.
 export const LANDMARKS = {
-  elevators: { label: 'Elevators', short: 'Elevators', x: 119, y: 196, node: 0, at: 'by the elevators' },
+  elevators: { label: 'Elevators', short: 'Elevators', x: 113, y: 197, node: 0, at: 'by the elevators' },
   bathrooms: { label: 'Bathrooms', short: 'Bathrooms', x: 119, y: 137, node: 1, at: 'outside the bathrooms' },
   conference: { label: 'Conference room', short: 'Conference', x: 30, y: 140, node: 1, at: 'in the conference room, across from the bathrooms' },
   hallway: { label: 'Hallway', short: 'Hallway', x: 40, y: 32, node: 3, at: 'in the hallway' },
-  classroom: { label: 'Classroom', short: 'Classroom', x: 30, y: 79, node: 4, at: 'at the classroom entrance' },
+  classroom: { label: 'Classroom', short: 'Classroom', x: 28, y: 83, node: 4, at: 'at the classroom entrance' },
 };
 export const LANDMARK_KEYS = Object.keys(LANDMARKS);
 

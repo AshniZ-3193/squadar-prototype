@@ -243,3 +243,4 @@ input[type=range] { width: 100%; accent-color: var(--cyan); }
 .cal-cell { height: 38px; display: flex; align-items: center; justify-content: center; }
 .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .dot.ring { background: var(--neutral); outline: 2px solid var(--text); outline-offset: 2px; width: 8px; height: 8px; }
+.pin-alarm { position: absolute; right: -18px; top: -14px; font: 900 18px var(--display); color: var(--red); text-shadow: 0 0 10px rgba(255,59,78,0.8); }
