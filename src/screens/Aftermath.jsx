@@ -218,6 +218,80 @@ function Calendar({ days }) {
   );
 }
 
+// ---------- month insight ----------
+
+function Ring({ pct }) {
+  const r = 30; const c = 2 * Math.PI * r;
+  return (
+    <svg width="84" height="84" viewBox="0 0 84 84" role="img" aria-label={`${pct}% of nights under your limit`} style={{ flex: 'none' }}>
+      <circle cx="42" cy="42" r={r} fill="none" stroke="#2A2140" strokeWidth="8" />
+      <circle cx="42" cy="42" r={r} fill="none" stroke="#3DE0FF" strokeWidth="8" strokeLinecap="round"
+        strokeDasharray={`${(pct / 100) * c} ${c}`} transform="rotate(-90 42 42)" style={{ transition: 'stroke-dasharray .8s ease-out' }} />
+      <text x="42" y="47" textAnchor="middle" fill="#F4EEFF" fontSize="17" fontWeight="800" fontFamily="Unbounded, sans-serif">{pct}%</text>
+    </svg>
+  );
+}
+
+// Picks the headline, a comparison and tips from the past 4 weeks.
+function monthInsight(nights, prevCount, busiest, level) {
+  const total = nights.length;
+  const under = nights.filter((n) => !n.over).length;
+  const pct = total ? Math.round((under / total) * 100) : 100;
+  let title; let body;
+  if (total === 0) {
+    title = 'A quiet month';
+    body = 'No nights out in the past 4 weeks.';
+  } else if (pct >= 80) {
+    title = 'Hey, you’re doing great';
+    body = `You stayed under your limit on ${under} of ${total} nights out.`;
+  } else if (pct >= 50) {
+    title = `You’re ${pct}% of the way to your goal`;
+    body = `You stayed under your limit on ${under} of ${total} nights. One or two more and you’re there.`;
+  } else {
+    title = 'This month was a lot';
+    body = `Only ${under} of ${total} nights stayed under your limit. Small changes add up.`;
+  }
+  const diff = total - prevCount;
+  const trend = diff === 0 ? `Same number of nights out as the month before (${prevCount}).`
+    : diff < 0 ? `${-diff} fewer ${-diff === 1 ? 'night' : 'nights'} out than the month before (${prevCount}).`
+    : `${diff} more ${diff === 1 ? 'night' : 'nights'} out than the month before (${prevCount}).`;
+  const tips = [
+    `${busiest}s are your biggest nights. Try planning for one level lower than ${level.label} on your next ${busiest}.`,
+    'Pick one night next week to go out sober, or switch to water after your second drink.',
+    'Ask a friend in your squad to check in with you halfway through the night.',
+  ];
+  return { pct, title, body, trend, tips, total };
+}
+
+function MonthInsight({ insight }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="card stack reveal insight" style={{ gap: 12 }}>
+      <span className="eyebrow" style={{ fontSize: 12, color: 'var(--cyan-soft)' }}>Your month · goal: stay under your limit</span>
+      <div className="row" style={{ gap: 16, alignItems: 'center' }}>
+        <Ring pct={insight.pct} />
+        <div className="stack" style={{ gap: 4 }}>
+          <span className="h-display" style={{ fontSize: 22, lineHeight: 1.15 }}>{insight.title}</span>
+          <span className="soft" style={{ fontSize: 15 }}>{insight.body}</span>
+        </div>
+      </div>
+      <span className="muted small">{insight.trend}</span>
+      {insight.total > 0 && (
+        <>
+          <button type="button" className="insight-btn" aria-expanded={open} onClick={() => setOpen(!open)}>
+            How can next month be better? <span aria-hidden="true">{open ? '−' : '+'}</span>
+          </button>
+          {open && (
+            <ul className="tips reveal">
+              {insight.tips.map((t, i) => <li key={i}>{t}</li>)}
+            </ul>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 // ---------- screen ----------
 
 function Stat({ label, value, tone }) {
@@ -259,6 +333,9 @@ export default function Aftermath({ squad, allMembers, alerts, me }) {
     return { date, limit: last.limit, night: byDay.get(startOfDay(date).getTime()), future: date > last.date };
   });
   const monthNights = calDays.filter((d) => d.night).map((d) => d.night);
+  const prevMonthCount = nights.filter((n) => n.date >= new Date(calStart.getTime() - 28 * DAY) && n.date < calStart).length;
+  const busiestDay = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][(() => { const c = Array(7).fill(0); nights.forEach((n) => c[n.date.getDay()]++); return c.indexOf(Math.max(...c)); })()];
+  const insight = monthInsight(monthNights, prevMonthCount, busiestDay, level);
   let streak = 0;
   for (let i = nights.length - 1; i >= 0 && !nights[i].over; i--) streak++;
 
@@ -331,10 +408,11 @@ export default function Aftermath({ squad, allMembers, alerts, me }) {
 
       {range === 'month' && (
         <>
-          <section className="card stack reveal" key="m1" style={{ gap: 6 }}>
-            <span className="h-display" style={{ fontSize: 26 }}>{monthNights.length} nights out in the past 4 weeks</span>
-            <span className="soft">{monthNights.filter((n) => n.over).length} over your limit · about {monthNights.reduce((a, n) => a + n.drinks, 0)} drinks</span>
-          </section>
+          <MonthInsight insight={insight} key="m0" />
+          <div className="stats">
+            <Stat label="Nights out, past 4 weeks" value={monthNights.length} />
+            <Stat label="Over your limit" value={monthNights.filter((n) => n.over).length} tone={monthNights.some((n) => n.over) ? 'over' : null} />
+          </div>
           <section className="card stack" style={{ gap: 8 }}>
             <b>Nights out per week</b>
             <WeeksLine weeks={weeks} />

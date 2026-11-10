@@ -246,3 +246,7 @@ input[type=range] { width: 100%; accent-color: var(--cyan); }
 .pin-alarm { position: absolute; right: -18px; top: -14px; font: 900 18px var(--display); color: var(--red); text-shadow: 0 0 10px rgba(255,59,78,0.8); }
 .cal-btn { border: none; background: transparent; border-radius: 12px; cursor: pointer; padding: 0; }
 .cal-btn.on { background: var(--surface-2); box-shadow: inset 0 0 0 1.5px var(--cyan); }
+.insight { border-color: rgba(61,224,255,0.45); box-shadow: 0 0 28px rgba(61,224,255,0.12); }
+.insight-btn { display: flex; justify-content: space-between; align-items: center; min-height: 48px; padding: 0 14px; border-radius: 14px; border: 1px solid var(--line-2); background: transparent; color: var(--text); font: 700 15px var(--body); cursor: pointer; }
+.insight-btn span { color: var(--cyan); font-size: 20px; }
+.tips { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; color: var(--soft); font-size: 15px; line-height: 1.4; }
