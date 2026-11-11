@@ -5,13 +5,20 @@ const pct = (v, total) => `${(v / total) * 100}%`;
 
 // Staged map of Tangen Hall, 4th floor, with each friend's pin + drunk-o-meter.
 export default function FloorMap({
-  members, meId, subjectId = null, goingIds = [], route = null, onLandmark, selectedId, compact = false,
+  members, meId, subjectId = null, goingIds = [], route = null, onLandmark, onPlace, selectedId, compact = false,
 }) {
   const subject = members.find((m) => m.id === subjectId);
   const subjectSpot = subject ? landmarkOf(subject) : null;
   return (
     <div className="floor" style={{ aspectRatio: `${PLAN.w} / ${PLAN.h}` }}>
       <svg viewBox={`0 0 ${PLAN.w} ${PLAN.h}`} width="100%" height="100%" role="img"
+        style={onPlace ? { cursor: 'crosshair' } : undefined}
+        onClick={onPlace ? (e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          const x = Math.min(PLAN.w - 8, Math.max(8, ((e.clientX - r.left) / r.width) * PLAN.w));
+          const y = Math.min(PLAN.h - 8, Math.max(8, ((e.clientY - r.top) / r.height) * PLAN.h));
+          onPlace({ x, y });
+        } : undefined}
         aria-label="Floor plan of Tangen Hall 4th floor: elevators, bathrooms, conference room, hallway and classroom">
         <rect x="0" y="0" width={PLAN.w} height={PLAN.h} rx="8" fill="#0F0919" />
         {/* floor */}
@@ -62,7 +69,7 @@ export default function FloorMap({
         {onLandmark && LANDMARK_KEYS.map((k) => (
           <circle key={k} cx={LANDMARKS[k].x} cy={LANDMARKS[k].y} r="13" fill="rgba(61,224,255,0.08)"
             stroke="#3DE0FF" strokeOpacity="0.5" strokeDasharray="2 2" style={{ cursor: 'pointer' }}
-            onClick={() => onLandmark(k)} />
+            onClick={(e) => { e.stopPropagation(); onLandmark(k); }} />
         ))}
       </svg>
       {members.filter((m) => m.status === 'active' && posOf(m)).map((m) => {

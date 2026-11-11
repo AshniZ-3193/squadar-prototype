@@ -120,6 +120,12 @@ function Control({ code, onExit }) {
     say('Spread everyone across the floor. Tell each person where to stand.');
   };
   const moveTo = async (m, key) => { await placeMember(m, key, members); };
+  // Drop the selected person exactly where the map was tapped.
+  const onPlace = async ({ x, y }) => {
+    if (!placing) return;
+    await supabase.from('members').update({ lat: y, lng: x, location_source: 'manual', location_updated_at: new Date().toISOString() }).eq('id', placing);
+    setPlacing(null);
+  };
   const onLandmark = async (key) => {
     if (!placing) return;
     const m = byId(all, placing);
@@ -143,9 +149,9 @@ function Control({ code, onExit }) {
       <div className="fac-grid">
         <div className="stack">
           <div className="fac-map">
-            <FloorMap members={members} subjectId={subject?.id} goingIds={alert?.going_ids || []} onLandmark={placing ? onLandmark : null} selectedId={placing} />
+            <FloorMap members={members} subjectId={subject?.id} goingIds={alert?.going_ids || []} onLandmark={placing ? onLandmark : null} onPlace={placing ? onPlace : null} selectedId={placing} />
           </div>
-          {placing && <p className="banner-cyan small">Tap a landmark circle to move <b>{byId(all, placing)?.name}</b> there. <button type="button" className="btn-text" onClick={() => setPlacing(null)}>Cancel</button></p>}
+          {placing && <p className="banner-cyan small">Tap anywhere on the map to place <b>{byId(all, placing)?.name}</b>, or tap a dashed circle to snap them to that landmark. <button type="button" className="btn-text" onClick={() => setPlacing(null)}>Cancel</button></p>}
           <div className="row" style={{ flexWrap: 'wrap' }}>
             <button type="button" className="btn btn-ghost" style={{ width: 'auto' }} onClick={spread}>Spread everyone out</button>
             <button type="button" className="btn btn-ghost" style={{ width: 'auto' }} onClick={simNight}>Random BACs (under limits)</button>
@@ -196,6 +202,8 @@ function Control({ code, onExit }) {
                   )}
                   <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
                     {m.has_band && <button type="button" className="btn btn-primary" style={{ width: 'auto', minHeight: 40, fontSize: 14 }} onClick={() => hitLimit(m)}>Hit limit</button>}
+                    <button type="button" className={`btn btn-ghost${placing === m.id ? ' active' : ''}`} style={{ width: 'auto', minHeight: 40, fontSize: 14, ...(placing === m.id ? { borderColor: 'var(--cyan)', color: 'var(--cyan-soft)' } : {}) }}
+                      onClick={() => setPlacing(placing === m.id ? null : m.id)}>{placing === m.id ? 'Tap the map…' : 'Place on map'}</button>
                     <label className="row small" style={{ gap: 6 }}>
                       <span className="muted">At</span>
                       <select className="select" value={spot || ''} onChange={(e) => moveTo(m, e.target.value)} aria-label={`Move ${m.name}`}>
